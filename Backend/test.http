@@ -1,0 +1,86 @@
+@baseUrl = http://localhost:5000/api
+@ownerEmail = owner@example.com
+@ownerPassword = password123
+@customerEmail = customer@example.com
+@customerPassword = customer123
+
+### 1. Register Owner
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "vivek",
+  "email": "{{ownerEmail}}",
+  "password": "{{ownerPassword}}",
+  "role": "owner"
+}
+
+### 2. Login Owner
+# @name loginOwner
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{ownerEmail}}",
+  "password": "{{ownerPassword}}"
+}
+
+### Capture Owner Token
+@ownerToken = {{loginOwner.response.body.token}}
+
+### 3. Create Customer (Owner Only)
+POST {{baseUrl}}/owner/customers
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "{{customerEmail}}",
+  "password": "{{customerPassword}}",
+  "payableAmount": 1500
+}
+
+### 4. Get All Customers (Owner Only)
+GET {{baseUrl}}/owner/customers
+Authorization: Bearer {{ownerToken}}
+
+### 5. Login Customer
+# @name loginCustomer
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerEmail}}",
+  "password": "{{customerPassword}}"
+}
+
+### Capture Customer Token
+@customerToken = {{loginCustomer.response.body.token}}
+
+### 6. Get Current Customer Info (Self)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{customerToken}}
+
+### 7. Create Payment Intent (Customer Only)
+POST {{baseUrl}}/payment/create-intent
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "amount": 500
+}
+
+### 8. Simulate Payment Success (Customer Only)
+# Note: This reduces payableAmount and deletes user if it hits 0
+POST {{baseUrl}}/payment/success
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "amount": 500
+}
+
+### 9. Verify Deletion (Owner Only)
+# John Doe should be gone from this list now
+GET {{baseUrl}}/owner/customers
+Authorization: Bearer {{ownerToken}}

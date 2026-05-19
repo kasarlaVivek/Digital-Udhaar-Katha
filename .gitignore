@@ -1,0 +1,26 @@
+# Dependency directories
+**/node_modules/
+
+# Environments & Private Secrets
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Production builds
+**/dist/
+**/build/
+
+# Operating system files
+**/.DS_Store
+**/Thumbs.db
+
+# Logs
+**/*.log
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
