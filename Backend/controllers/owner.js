@@ -316,8 +316,8 @@ export const deleteCustomer = async (req, res, next) => {
       await User.findByIdAndDelete(customerId);
     }
 
-    // Send removal email notification
-      // Send removal email notification asynchronously in the background
+    // Send removal email notification asynchronously in the background
+    if (customer) {
       sendEmail({
         email: customer.email,
         subject: `🏪 Digital Udhaar Katha - Ledger record removed by ${req.user.name}`,
@@ -325,6 +325,7 @@ export const deleteCustomer = async (req, res, next) => {
       }).catch((emailErr) => {
         console.log('Could not send removal email to customer:', emailErr.message);
       });
+    }
 
     res.status(200).json({
       success: true,
@@ -334,3 +335,10 @@ export const deleteCustomer = async (req, res, next) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+
+
+
+
+
+
+
