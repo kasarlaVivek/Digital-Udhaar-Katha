@@ -70,17 +70,17 @@ export const createCustomer = async (req, res, next) => {
 
     const plainText = `Hello ${customer.name},\n\nYour account has been added to the ledger of ${req.user.name}.\n\nYour login details:\nEmail: ${email}\n\nYour outstanding balance with this shop is: ₹${payableAmount || 0}\n\nPlease login to pay: ${loginUrl}`;
 
-    try {
-      await sendEmail({
-        email: customer.email,
-        subject: `🏪 Digital Udhaar Katha - Account linked by ${req.user.name}`,
-        message: plainText,
-        html,
-      });
-      console.log(`Notification email sent to ${customer.email}`);
-    } catch (err) {
+    // Send email asynchronously in the background so it doesn't block the API response
+    sendEmail({
+      email: customer.email,
+      subject: `🏪 Digital Udhaar Katha - Account linked by ${req.user.name}`,
+      message: plainText,
+      html,
+    }).then(() => {
+      console.log(`Notification email sent asynchronously to ${customer.email}`);
+    }).catch((err) => {
       console.log('Email could not be sent:', err.message);
-    }
+    });
 
     // Respond back in format expected by OwnerDashboard
     res.status(201).json({
@@ -176,24 +176,26 @@ export const updateDebt = async (req, res, next) => {
         await User.findByIdAndDelete(customerId);
       }
 
-      // Notify customer via HTML email
+      // Notify customer via HTML email asynchronously in the background
       try {
         const customerHtml = accountDeletedEmail({ 
           customerName, 
           ownerName, 
           totalPaid: originalAmount 
         });
-        await sendEmail({
+        sendEmail({
           email: customerEmail,
           subject: '🎉 Congratulations! Your Udhaar is Fully Cleared!',
           message: `Congratulations ${customerName}! You have cleared all your outstanding dues of ₹${originalAmount} with ${ownerName}.`,
           html: customerHtml,
+        }).catch((emailErr) => {
+          console.log('Could not send deletion email to customer:', emailErr.message);
         });
-      } catch (emailErr) {
-        console.log('Could not send deletion email to customer:', emailErr.message);
+      } catch (err) {
+        console.log('Error generating customer email:', err.message);
       }
 
-      // Notify owner about the final clearance
+      // Notify owner about the final clearance asynchronously in the background
       if (ownerEmail) {
         try {
           const ownerHtml = ownerNotifyDeletionEmail({ 
@@ -201,14 +203,16 @@ export const updateDebt = async (req, res, next) => {
             ownerName, 
             totalPaid: originalAmount 
           });
-          await sendEmail({
+          sendEmail({
             email: ownerEmail,
             subject: `💰 ${customerName} has cleared their full balance!`,
             message: `${customerName} has cleared their full outstanding balance of ₹${originalAmount}.`,
             html: ownerHtml,
+          }).catch((emailErr) => {
+            console.log('Could not send notification email to owner:', emailErr.message);
           });
-        } catch (emailErr) {
-          console.log('Could not send notification email to owner:', emailErr.message);
+        } catch (err) {
+          console.log('Error generating owner email:', err.message);
         }
       }
 
@@ -237,16 +241,17 @@ export const updateDebt = async (req, res, next) => {
 
     const plainText = `Hello ${customer.name},\n\nAn amount of ₹${Math.abs(amount)} has been ${type} to your udhaar katha by ${req.user.name}.${description ? `\nNote: ${description}` : ''}\n\nYour new total balance with this shop is: ₹${ledger.payableAmount}\n\nPlease login to view details: ${loginUrl}`;
 
-    try {
-      await sendEmail({
-        email: customer.email,
-        subject: `📊 Udhaar Update - ₹${Math.abs(amount).toLocaleString('en-IN')} ${type}`,
-        message: plainText,
-        html,
-      });
-    } catch (err) {
+    // Send email asynchronously in the background so it doesn't block the API response
+    sendEmail({
+      email: customer.email,
+      subject: `📊 Udhaar Update - ₹${Math.abs(amount).toLocaleString('en-IN')} ${type}`,
+      message: plainText,
+      html,
+    }).then(() => {
+      console.log(`Notification email sent asynchronously to ${customer.email}`);
+    }).catch((err) => {
       console.log('Notification email could not be sent:', err.message);
-    }
+    });
 
     res.status(200).json({
       success: true,
@@ -312,17 +317,14 @@ export const deleteCustomer = async (req, res, next) => {
     }
 
     // Send removal email notification
-    if (customer) {
-      try {
-        await sendEmail({
-          email: customer.email,
-          subject: `🏪 Digital Udhaar Katha - Ledger record removed by ${req.user.name}`,
-          message: `Hello ${customer.name},\n\nYour ledger record with ${req.user.name} has been removed. If your account was deleted, you will no longer be able to login unless a shop owner creates a new record for you.`,
-        });
-      } catch (emailErr) {
+      // Send removal email notification asynchronously in the background
+      sendEmail({
+        email: customer.email,
+        subject: `🏪 Digital Udhaar Katha - Ledger record removed by ${req.user.name}`,
+        message: `Hello ${customer.name},\n\nYour ledger record with ${req.user.name} has been removed. If your account was deleted, you will no longer be able to login unless a shop owner creates a new record for you.`,
+      }).catch((emailErr) => {
         console.log('Could not send removal email to customer:', emailErr.message);
-      }
-    }
+      });
 
     res.status(200).json({
       success: true,

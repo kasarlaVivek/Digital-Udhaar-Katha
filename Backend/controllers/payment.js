@@ -117,7 +117,7 @@ export const paymentSuccess = async (req, res) => {
     // 2. Notify both Owner and Customer with verified receipt emails
     const remainingBalance = Math.max(0, ledger.payableAmount);
     
-    // Email to customer
+    // Email to customer asynchronously
     try {
       const customerReceiptHtml = paymentVerifiedEmail({
         customerName: customer.name,
@@ -127,17 +127,19 @@ export const paymentSuccess = async (req, res) => {
         transactionId: transaction._id,
         isForOwner: false
       });
-      await sendEmail({
+      sendEmail({
         email: customer.email,
         subject: `💳 Payment Receipt - ₹${Number(amount).toLocaleString('en-IN')} Paid to ${owner.name}`,
         message: `Your payment of ₹${amount} to ${owner.name} has been processed successfully.`,
         html: customerReceiptHtml
+      }).catch((err) => {
+        console.error('Could not send payment verification email to customer:', err.message);
       });
     } catch (err) {
-      console.error('Could not send payment verification email to customer:', err.message);
+      console.error('Error generating customer payment receipt email:', err.message);
     }
 
-    // Email to owner
+    // Email to owner asynchronously
     if (owner && owner.email) {
       try {
         const ownerReceiptHtml = paymentVerifiedEmail({
@@ -148,14 +150,16 @@ export const paymentSuccess = async (req, res) => {
           transactionId: transaction._id,
           isForOwner: true
         });
-        await sendEmail({
+        sendEmail({
           email: owner.email,
           subject: `💰 Payment Verified - Received ₹${Number(amount).toLocaleString('en-IN')} from ${customer.name}`,
           message: `We verified a payment of ₹${amount} from ${customer.name}.`,
           html: ownerReceiptHtml
+        }).catch((err) => {
+          console.error('Could not send payment verification email to owner:', err.message);
         });
       } catch (err) {
-        console.error('Could not send payment verification email to owner:', err.message);
+        console.error('Error generating owner payment receipt email:', err.message);
       }
     }
 
@@ -179,31 +183,35 @@ export const paymentSuccess = async (req, res) => {
         await User.findByIdAndDelete(req.user.id);
       }
 
-      // Send additional congratulations email to customer about credit clearance
+      // Send additional congratulations email to customer about credit clearance asynchronously in the background
       try {
         const customerHtml = accountDeletedEmail({ customerName, ownerName, totalPaid });
-        await sendEmail({
+        sendEmail({
           email: customerEmail,
           subject: '🎉 Congratulations! Your Udhaar is Fully Cleared!',
           message: `Congratulations ${customerName}! You have cleared all your outstanding dues of ₹${totalPaid} with ${ownerName}.`,
           html: customerHtml,
+        }).catch((emailErr) => {
+          console.log('Could not send deletion email to customer:', emailErr.message);
         });
-      } catch (emailErr) {
-        console.log('Could not send deletion email to customer:', emailErr.message);
+      } catch (err) {
+        console.log('Error generating clearance email to customer:', err.message);
       }
 
-      // Notify owner about the final clearance
+      // Notify owner about the final clearance asynchronously in the background
       if (ownerEmail) {
         try {
           const ownerHtml = ownerNotifyDeletionEmail({ customerName, ownerName, totalPaid });
-          await sendEmail({
+          sendEmail({
             email: ownerEmail,
             subject: `💰 ${customerName} has cleared their full balance!`,
             message: `${customerName} has cleared their full outstanding balance of ₹${totalPaid}.`,
             html: ownerHtml,
+          }).catch((emailErr) => {
+            console.log('Could not send notification email to owner:', emailErr.message);
           });
-        } catch (emailErr) {
-          console.log('Could not send notification email to owner:', emailErr.message);
+        } catch (err) {
+          console.log('Error generating clearance email to owner:', err.message);
         }
       }
 
