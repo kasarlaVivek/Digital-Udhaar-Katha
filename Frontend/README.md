@@ -24,16 +24,20 @@ The application is styled strictly in custom, premium Vanilla CSS, prioritizing 
 ### 1. Unified Authentication Interface
 * Single, responsive login portal featuring glassmorphic forms.
 * Automatically identifies the user's role (owner or customer) and routes them instantly to their specialized dashboard.
+* **Password Reset Flow**: Includes dedicated `ForgotPassword` and `ResetPassword` views for requesting email tokens and securely setting new credentials.
 
 ### 2. Owner Dashboard
 * **Dynamic Overview Metrics**: Interactive stat cards highlighting total outstanding udhaar, active customer count, and Stripe account connection status.
+* **Tab Navigation**: Owners can seamlessly toggle between **Active Customers** and the **Global Activity Log**.
+* **Global Activity Log**: A master audit ledger listing every action across all customers chronologically (debt added, repayments made, online Stripe payments, and ledger clearances).
 * **Custom Interactive Modals**:
   * **Add Customer Modal**: Allows shopkeepers to onboard customers with name, credentials, initial debt, and an **Initial Note / Description** input that dynamically displays only when starting debt is set to > 0.
   * **Debt Update Modal**: Interactive modal equipped with custom quick-preset buttons (₹100, ₹500, ₹1000, ₹5000) and an integrated **Note / Description** input. Displays custom context placeholders based on whether the owner is adding credit or recording manual cash repayments.
   * **Delete Confirmation Modal**: Protects owners from accidentally deleting ledgers.
-  * **Chronological History Modal (Drawer)**: Displays a full audit ledger per customer, mapping transaction values, timestamps, and custom notes clearly.
+  * **Customer-Specific History**: Displays a full audit ledger filtered per customer, mapping transaction values, timestamps, and custom notes clearly.
 
 ### 3. Customer Dashboard
+* **Tab Navigation**: Customers can toggle between **Active Shop Accounts** and a **Complete Transaction History (Global Activity Log)** to view all past debts, including cleared accounts.
 * **Multi-Shop Account Switcher**: Displays outstanding debts from different merchants side-by-side using an elegant glass-morphic account switcher.
 * **Stripe Elements Checkout**: Processes direct full or partial settlements using embedded sandbox checkout elements.
 * **Ledger Statement Timeline**: Renders all historical transactions and displays custom notes (e.g. initial balances, item details, manual repayment tags, or Stripe verification stamps) directly inside the customer's personal statement timeline.

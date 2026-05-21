@@ -184,6 +184,7 @@ const CustomerDashboard = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [stripePromise, setStripePromise] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [activeTab, setActiveTab] = useState('ledgers'); // 'ledgers' or 'history'
 
   useEffect(() => {
     fetchTransactions();
@@ -342,6 +343,26 @@ const CustomerDashboard = () => {
       </AnimatePresence>
 
       {/* Main Dashboard */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2.5rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
+        <button
+          className={`btn ${activeTab === 'ledgers' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setActiveTab('ledgers')}
+          style={{ padding: '10px 20px', borderRadius: '8px', fontSize: '0.95rem' }}
+        >
+          <Store size={16} style={{ marginRight: '6px' }} />
+          <span>Active Shop Accounts</span>
+        </button>
+        <button
+          className={`btn ${activeTab === 'history' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setActiveTab('history')}
+          style={{ padding: '10px 20px', borderRadius: '8px', fontSize: '0.95rem' }}
+        >
+          <Clock size={16} style={{ marginRight: '6px' }} />
+          <span>Global Activity Log</span>
+        </button>
+      </div>
+
+      {activeTab === 'ledgers' ? (
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '3rem', alignItems: 'start' }}>
 
         {/* Left Column - Info & Ledger Lists */}
@@ -702,6 +723,77 @@ const CustomerDashboard = () => {
           )}
         </motion.div>
       </div>
+      ) : (
+        <div className="glass-card" style={{ padding: '2.5rem' }}>
+          <h2 style={{ fontSize: '1.8rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Clock size={28} style={{ color: 'var(--primary)' }} />
+            <span className="gradient-text">Complete Transaction History</span>
+          </h2>
+          
+          <div style={{ display: 'grid', gap: '0.8rem' }}>
+            {transactions.map((t) => {
+              const isCredit = t.type === 'credit';
+              return (
+                <motion.div
+                  key={t._id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    padding: '1rem 1.25rem',
+                    borderRadius: '12px',
+                    background: 'var(--glass)',
+                    border: '1px solid var(--glass-border)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '8px',
+                      background: isCredit ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                      color: isCredit ? 'var(--error)' : 'var(--success)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: '700',
+                      fontSize: '1.2rem',
+                    }}>
+                      {isCredit ? '↑' : '↓'}
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: '600', fontSize: '1rem', margin: 0 }}>
+                        {t.description || (isCredit ? 'Credit Added' : 'Repayment')}
+                      </p>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Shop: <strong>{t.ownerName}</strong> &bull; {new Date(t.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{
+                      fontWeight: '800',
+                      fontSize: '1.2rem',
+                      color: isCredit ? 'var(--error)' : 'var(--success)',
+                      margin: 0,
+                    }}>
+                      {isCredit ? '+' : '-'} ₹{t.amount.toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
+
+            {transactions.length === 0 && (
+              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No past transactions found.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 992px) {

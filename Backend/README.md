@@ -43,8 +43,12 @@ The database utilizes a Decoupled Multi-Ledger Database Architecture (Option B) 
 
 ### 4. Real-time Email Notifications
 * Powered by Nodemailer with highly responsive, secure HTML/CSS email templates.
-* Triggered on user registration, manual debt updates, Stripe payment receipts, and final congratulations/account clearance.
+* Triggered on user registration, manual debt updates, Stripe payment receipts, password resets, and final congratulations/account clearance.
 * Integrates custom transaction notes directly into a visually distinct card inside the customer email template (`debtUpdatedEmail`), allowing immediate invoice-level transparency.
+
+### 5. Secure Password Management
+* Forgot password flow allows users (both owners and customers) to request a secure reset token via email.
+* Token is cryptographically hashed using Node's native `crypto` module before saving to the database.
 
 ---
 
@@ -116,6 +120,8 @@ node test_e2e.js
 * `POST /api/auth/register` - Register a new owner
 * `POST /api/auth/login` - Login owner or customer
 * `GET /api/auth/me` - Get current authenticated user details
+* `POST /api/auth/forgotpassword` - Request a password reset email
+* `PUT /api/auth/resetpassword/:resettoken` - Reset password using the emailed token
 
 ### Owner Management
 * `POST /api/owner/customers` - Register/Onboard a customer

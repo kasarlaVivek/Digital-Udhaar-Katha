@@ -45,17 +45,18 @@ export const createCustomer = async (req, res, next) => {
       payableAmount: payableAmount || 0
     });
 
-    // 3. Create a Credit Transaction if starting debt > 0
-    if (payableAmount && Number(payableAmount) > 0) {
-      await Transaction.create({
-        ledgerId: ledger._id,
-        ownerId: req.user.id,
-        customerId: customer._id,
-        type: 'credit',
-        amount: Number(payableAmount),
-        description: description || 'Initial balance'
-      });
-    }
+    // 3. Create a Credit Transaction representing customer creation / initial debt
+    await Transaction.create({
+      ledgerId: ledger._id,
+      ownerId: req.user.id,
+      customerId: customer._id,
+      customerName: customer.name,
+      customerEmail: customer.email,
+      ownerName: req.user.name,
+      type: 'credit',
+      amount: Number(payableAmount) || 0,
+      description: description || (Number(payableAmount) > 0 ? 'Customer created with initial debt' : 'Customer created (Zero balance)')
+    });
 
     // 4. Send email to customer
     const loginUrl = `${process.env.FRONTEND_URL}/login`;
@@ -153,9 +154,12 @@ export const updateDebt = async (req, res, next) => {
       ledgerId: ledger._id,
       ownerId: req.user.id,
       customerId,
+      customerName: customer.name,
+      customerEmail: customer.email,
+      ownerName: req.user.name,
       type: amount > 0 ? 'credit' : 'debit',
       amount: Math.abs(Number(amount)),
-      description: description || (amount > 0 ? 'Manual debt addition' : 'Manual repayment')
+      description: description || (amount > 0 ? 'Debt added (Offline)' : 'Offline Repayment')
     });
     
     // If ledger balance becomes 0 or less, auto-delete the ledger entry
@@ -164,6 +168,18 @@ export const updateDebt = async (req, res, next) => {
       const customerEmail = customer.email;
       const ownerName = req.user.name;
       const ownerEmail = req.user.email;
+
+      await Transaction.create({
+        ledgerId: ledger._id,
+        ownerId: req.user.id,
+        customerId,
+        customerName,
+        customerEmail,
+        ownerName,
+        type: 'debit',
+        amount: 0,
+        description: `Customer deleted - Debt cleared (₹0 written off)`
+      });
 
       await ledger.deleteOne();
       
@@ -305,6 +321,20 @@ export const deleteCustomer = async (req, res, next) => {
     }
 
     const customer = await User.findById(customerId);
+    
+    // Create transaction recording customer deletion and write-off of any remaining debt
+    await Transaction.create({
+      ledgerId: ledger._id,
+      ownerId: req.user.id,
+      customerId: customerId,
+      customerName: customer ? customer.name : 'Unknown Customer',
+      customerEmail: customer ? customer.email : '',
+      ownerName: req.user.name,
+      type: 'debit',
+      amount: ledger.payableAmount || 0,
+      description: `Customer deleted - Debt cleared (₹${ledger.payableAmount || 0} written off)`
+    });
+
     await ledger.deleteOne();
 
     // Check if this customer has any other active ledgers left

@@ -109,6 +109,9 @@ export const paymentSuccess = async (req, res) => {
       ledgerId: ledger._id,
       ownerId: ledger.ownerId,
       customerId: req.user.id,
+      customerName: customer.name,
+      customerEmail: customer.email,
+      ownerName: owner ? owner.name : '',
       type: 'debit',
       amount: Number(amount),
       description: 'Stripe Online Payment'
@@ -170,6 +173,18 @@ export const paymentSuccess = async (req, res) => {
       const totalPaid = originalAmount;
       const ownerName = owner?.name || 'Shop Owner';
       const ownerEmail = owner?.email;
+
+      await Transaction.create({
+        ledgerId: ledger._id,
+        ownerId: ledger.ownerId,
+        customerId: req.user.id,
+        customerName,
+        customerEmail,
+        ownerName,
+        type: 'debit',
+        amount: 0,
+        description: `Customer deleted - Debt cleared (₹0 written off)`
+      });
 
       // Delete the specific ledger
       await ledger.deleteOne();

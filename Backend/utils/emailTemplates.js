@@ -295,3 +295,37 @@ export const paymentVerifiedEmail = ({ customerName, ownerName, amountPaid, rema
   return html;
 };
 
+/**
+ * Email sent for password reset
+ */
+export const passwordResetEmail = ({ resetUrl }) => {
+  const html = `
+  <div style="${baseStyles}">
+    <div style="${cardStyles}">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h2 style="font-size: 22px; margin: 0; color: #f8fafc;">Password Reset Request</h2>
+      </div>
+
+      <p style="color: #94a3b8; font-size: 16px; line-height: 1.6;">
+        You are receiving this email because you (or someone else) requested a password reset for your account.
+      </p>
+
+      <div style="text-align: center; margin-top: 24px; margin-bottom: 24px;">
+        <a href="${resetUrl}" style="${buttonStyles}">
+          Reset Password
+        </a>
+      </div>
+      
+      <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+        If you did not request this, please ignore this email and your password will remain unchanged.
+      </p>
+    </div>
+
+    <p style="text-align: center; color: #475569; font-size: 12px; padding: 16px;">
+      © 2026 Digital Udhaar Katha. All rights reserved.
+    </p>
+  </div>
+  `;
+
+  return html;
+};

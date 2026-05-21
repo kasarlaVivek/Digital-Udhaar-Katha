@@ -4,7 +4,6 @@ const transactionSchema = new mongoose.Schema({
   ledgerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Ledger',
-    required: true,
   },
   ownerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -14,7 +13,18 @@ const transactionSchema = new mongoose.Schema({
   customerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+  },
+  customerName: {
+    type: String,
+    default: '',
+  },
+  customerEmail: {
+    type: String,
+    default: '',
+  },
+  ownerName: {
+    type: String,
+    default: '',
   },
   type: {
     type: String,
