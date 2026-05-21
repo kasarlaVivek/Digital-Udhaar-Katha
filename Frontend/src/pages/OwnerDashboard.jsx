@@ -301,9 +301,10 @@ const OwnerDashboard = () => {
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }}
+                        style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s', cursor: 'pointer' }}
                         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        onClick={() => handleViewHistory(customer)}
                       >
                         <td style={{ padding: '1.2rem 1.5rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -339,28 +340,28 @@ const OwnerDashboard = () => {
                             <button
                               className="btn btn-outline"
                               style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                              onClick={() => openDebtModal(customer, 'add')}
+                              onClick={(e) => { e.stopPropagation(); openDebtModal(customer, 'add'); }}
                             >
                               <ArrowUpRight size={14} /> Add
                             </button>
                             <button
                               className="btn btn-outline"
                               style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'var(--success)' }}
-                              onClick={() => openDebtModal(customer, 'repay')}
+                              onClick={(e) => { e.stopPropagation(); openDebtModal(customer, 'repay'); }}
                             >
                               <ArrowDownLeft size={14} /> Repaid
                             </button>
                             <button
                               className="btn btn-outline"
                               style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'var(--primary)' }}
-                              onClick={() => handleViewHistory(customer)}
+                              onClick={(e) => { e.stopPropagation(); handleViewHistory(customer); }}
                             >
                               <Clock size={14} /> History
                             </button>
                             <button
                               className="btn btn-outline"
                               style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'var(--error)' }}
-                              onClick={() => openDeleteModal(customer)}
+                              onClick={(e) => { e.stopPropagation(); openDeleteModal(customer); }}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -499,6 +500,8 @@ const OwnerDashboard = () => {
                     <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input
                       type="text"
+                      name="customerName"
+                      autoComplete="name"
                       className="input-field"
                       style={{ paddingLeft: '40px' }}
                       placeholder="Customer name"

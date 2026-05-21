@@ -55,6 +55,7 @@ const Register = () => {
               <input 
                 type="text" 
                 name="name"
+                autoComplete="name"
                 className="input-field" 
                 style={{ paddingLeft: '40px' }}
                 placeholder="John Doe"
