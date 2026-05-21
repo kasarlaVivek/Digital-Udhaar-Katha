@@ -117,6 +117,20 @@ const OwnerDashboard = () => {
     }
   };
 
+  // New: Download monthly PDF (last 30 days)
+  const handleDownloadMonthlyPDF = async (customer) => {
+    try {
+      const { data } = await API.get(`/transactions?customerId=${customer._id}`);
+      const now = new Date();
+      const monthAgo = new Date();
+      monthAgo.setDate(now.getDate() - 30);
+      const filtered = data.data.filter(t => new Date(t.createdAt) >= monthAgo && new Date(t.createdAt) <= now);
+      downloadPDF(customer, filtered);
+    } catch (error) {
+      toast.error('Failed to generate Monthly PDF');
+    }
+  };
+
   const handleDownloadAllPDF = () => {
     const doc = new jsPDF();
     doc.setFillColor(15, 23, 42);
@@ -480,6 +494,15 @@ const OwnerDashboard = () => {
                               title="Download PDF statement"
                             >
                               <FileDown size={14} />
+                            </button>
+                            <button
+                              className="btn btn-outline"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'var(--accent)' }}
+                              onClick={(e) => { e.stopPropagation(); handleDownloadMonthlyPDF(customer); }}
+                              title="Download Monthly PDF (last 30 days)"
+                            >
+                              <FileDown size={14} />
+                              <span style={{ marginLeft: '4px' }}>30d</span>
                             </button>
                           </div>
                         </td>
