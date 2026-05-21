@@ -1,5 +1,5 @@
 import express from 'express';
-import { createCustomer, getCustomers, updateDebt, deleteCustomer, updateStripeKeys } from '../controllers/owner.js';
+import { createCustomer, getCustomers, updateDebt, deleteCustomer, updateStripeKeys, sendReminder } from '../controllers/owner.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -17,6 +17,9 @@ router.route('/customers/:id/debt')
 
 router.route('/customers/:id')
   .delete(deleteCustomer);
+
+router.route('/customers/:id/remind')
+  .post(sendReminder);
 
 router.put('/stripe-keys', updateStripeKeys);
 

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, CreditCard, ShieldCheck, Clock, ArrowRight, Sparkles, CheckCircle, IndianRupee, Store } from 'lucide-react';
+import { Wallet, CreditCard, ShieldCheck, Clock, ArrowRight, Sparkles, CheckCircle, IndianRupee, Store, FileDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // Confetti particle component
 const ConfettiParticle = ({ delay, color }) => {
@@ -197,6 +199,48 @@ const CustomerDashboard = () => {
     } catch (error) {
       console.log('Failed to fetch transactions');
     }
+  };
+
+  const handleDownloadMyPDF = () => {
+    const doc = new jsPDF();
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(248, 250, 252);
+    doc.setFontSize(20);
+    doc.text('Digital Udhaar Katha', 14, 18);
+    doc.setFontSize(11);
+    doc.text(`Statement for: ${user?.name || 'Customer'}`, 14, 28);
+    doc.text(`Email: ${user?.email || ''}`, 14, 35);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 140, 28);
+
+    const tableData = transactions.map(t => ([
+      new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      t.ownerName || 'Shop',
+      t.description || (t.type === 'credit' ? 'Credit Added' : 'Repayment'),
+      t.type === 'credit' ? `+Rs.${t.amount.toLocaleString('en-IN')}` : `-Rs.${t.amount.toLocaleString('en-IN')}`,
+    ]));
+
+    doc.autoTable({
+      startY: 48,
+      head: [['Date', 'Shop', 'Description', 'Amount']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [241, 245, 249] },
+      styles: { fontSize: 9, cellPadding: 4 },
+    });
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(`Page ${i} of ${pageCount} | Digital Udhaar Katha`, 14, doc.internal.pageSize.height - 10);
+    }
+
+    doc.save(`${(user?.name || 'Customer').replace(/\s+/g, '_')}_statement.pdf`);
+    toast.success('PDF downloaded!');
   };
 
   // Initialize with customer's active ledgers
@@ -725,9 +769,15 @@ const CustomerDashboard = () => {
       </div>
       ) : (
         <div className="glass-card" style={{ padding: '2.5rem' }}>
-          <h2 style={{ fontSize: '1.8rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ fontSize: '1.8rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <Clock size={28} style={{ color: 'var(--primary)' }} />
             <span className="gradient-text">Complete Transaction History</span>
+            {transactions.length > 0 && (
+              <button className="btn btn-outline" onClick={handleDownloadMyPDF} style={{ marginLeft: 'auto', padding: '8px 16px', fontSize: '0.85rem' }}>
+                <FileDown size={16} style={{ marginRight: '6px' }} />
+                <span>Download PDF</span>
+              </button>
+            )}
           </h2>
           
           <div style={{ display: 'grid', gap: '0.8rem' }}>

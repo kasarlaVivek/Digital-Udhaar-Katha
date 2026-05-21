@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Users, CreditCard, ArrowUpRight, ArrowDownLeft, DollarSign, Trash2, Mail, Phone, Lock, User, IndianRupee, Settings, Eye, EyeOff, Clock } from 'lucide-react';
+import { Plus, Search, Users, CreditCard, ArrowUpRight, ArrowDownLeft, DollarSign, Trash2, Mail, Phone, Lock, User, IndianRupee, Settings, Eye, EyeOff, Clock, Bell, FileDown } from 'lucide-react';
 import API from '../api/axios';
 import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const OwnerDashboard = () => {
   const [customers, setCustomers] = useState([]);
@@ -49,6 +51,104 @@ const OwnerDashboard = () => {
     } catch (error) {
       toast.error('Failed to fetch transaction history');
     }
+  };
+
+  const handleSendReminder = async (customer) => {
+    try {
+      await API.post(`/owner/customers/${customer._id}/remind`);
+      toast.success(`Reminder sent to ${customer.name}!`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to send reminder');
+    }
+  };
+
+  const downloadPDF = (customer, transactions) => {
+    const doc = new jsPDF();
+    // Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(248, 250, 252);
+    doc.setFontSize(20);
+    doc.text('Digital Udhaar Katha', 14, 18);
+    doc.setFontSize(11);
+    doc.text(`Statement for: ${customer.name}`, 14, 28);
+    doc.text(`Email: ${customer.email}`, 14, 35);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 140, 28);
+    doc.text(`Balance: Rs.${(customer.payableAmount || 0).toLocaleString('en-IN')}`, 140, 35);
+
+    // Table
+    const tableData = transactions.map(t => ([
+      new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      t.description || (t.type === 'credit' ? 'Credit Added' : 'Repayment'),
+      t.type === 'credit' ? `+Rs.${t.amount.toLocaleString('en-IN')}` : '',
+      t.type === 'debit' ? `-Rs.${t.amount.toLocaleString('en-IN')}` : '',
+    ]));
+
+    doc.autoTable({
+      startY: 48,
+      head: [['Date', 'Description', 'Credit', 'Debit']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [241, 245, 249] },
+      styles: { fontSize: 9, cellPadding: 4 },
+    });
+
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(`Page ${i} of ${pageCount} | Digital Udhaar Katha`, 14, doc.internal.pageSize.height - 10);
+    }
+
+    doc.save(`${customer.name.replace(/\s+/g, '_')}_statement.pdf`);
+    toast.success('PDF downloaded!');
+  };
+
+  const handleDownloadPDF = async (customer) => {
+    try {
+      const { data } = await API.get(`/transactions?customerId=${customer._id}`);
+      downloadPDF(customer, data.data);
+    } catch (error) {
+      toast.error('Failed to generate PDF');
+    }
+  };
+
+  const handleDownloadAllPDF = () => {
+    const doc = new jsPDF();
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(248, 250, 252);
+    doc.setFontSize(20);
+    doc.text('Digital Udhaar Katha - Global Activity Log', 14, 18);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 14, 28);
+
+    const tableData = allTransactions.map(t => {
+      const custName = t.customerName || (t.customerId ? t.customerId.name : 'Deleted');
+      return [
+        new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        custName,
+        t.description || (t.type === 'credit' ? 'Credit Added' : 'Repayment'),
+        t.type === 'credit' ? `+Rs.${t.amount.toLocaleString('en-IN')}` : `-Rs.${t.amount.toLocaleString('en-IN')}`,
+      ];
+    });
+
+    doc.autoTable({
+      startY: 42,
+      head: [['Date', 'Customer', 'Description', 'Amount']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [241, 245, 249] },
+      styles: { fontSize: 9, cellPadding: 4 },
+    });
+
+    doc.save('Global_Activity_Log.pdf');
+    toast.success('PDF downloaded!');
   };
 
   useEffect(() => {
@@ -365,6 +465,22 @@ const OwnerDashboard = () => {
                             >
                               <Trash2 size={14} />
                             </button>
+                            <button
+                              className="btn btn-outline"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#f59e0b' }}
+                              onClick={(e) => { e.stopPropagation(); handleSendReminder(customer); }}
+                              title="Send payment reminder email"
+                            >
+                              <Bell size={14} />
+                            </button>
+                            <button
+                              className="btn btn-outline"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'var(--accent)' }}
+                              onClick={(e) => { e.stopPropagation(); handleDownloadPDF(customer); }}
+                              title="Download PDF statement"
+                            >
+                              <FileDown size={14} />
+                            </button>
                           </div>
                         </td>
                       </motion.tr>
@@ -382,6 +498,12 @@ const OwnerDashboard = () => {
             <h2 style={{ fontSize: '1.8rem' }}>
               <span className="gradient-text">Global Activity Log</span>
             </h2>
+            {allTransactions.length > 0 && (
+              <button className="btn btn-outline" onClick={handleDownloadAllPDF} style={{ padding: '10px 20px', fontSize: '0.9rem' }}>
+                <FileDown size={16} style={{ marginRight: '6px' }} />
+                <span>Download PDF</span>
+              </button>
+            )}
           </div>
 
           <motion.div

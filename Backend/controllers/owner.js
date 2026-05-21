@@ -2,7 +2,7 @@ import User from '../models/User.js';
 import Ledger from '../models/Ledger.js';
 import Transaction from '../models/Transaction.js';
 import sendEmail from '../utils/sendEmail.js';
-import { customerCreatedEmail, debtUpdatedEmail, accountDeletedEmail, ownerNotifyDeletionEmail } from '../utils/emailTemplates.js';
+import { customerCreatedEmail, debtUpdatedEmail, accountDeletedEmail, ownerNotifyDeletionEmail, paymentReminderEmail } from '../utils/emailTemplates.js';
 
 // @desc    Create a new customer or link existing customer to owner's ledger
 // @route   POST /api/owner/customers
@@ -361,6 +361,44 @@ export const deleteCustomer = async (req, res, next) => {
       success: true,
       data: {}
     });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// @desc    Send payment reminder email
+// @route   POST /api/owner/customers/:id/remind
+// @access  Private/Owner
+export const sendReminder = async (req, res, next) => {
+  const customerId = req.params.id;
+
+  try {
+    const ledger = await Ledger.findOne({ ownerId: req.user.id, customerId });
+    if (!ledger) {
+      return res.status(404).json({ success: false, message: 'Customer ledger not found.' });
+    }
+
+    const customer = await User.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found.' });
+    }
+
+    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+    const html = paymentReminderEmail({
+      customerName: customer.name,
+      ownerName: req.user.name,
+      payableAmount: ledger.payableAmount,
+      loginUrl
+    });
+
+    await sendEmail({
+      email: customer.email,
+      subject: `🔔 Payment Reminder - ${req.user.name}`,
+      message: `Hello ${customer.name},\n\nThis is a friendly reminder from ${req.user.name} regarding your pending balance of ₹${ledger.payableAmount}.\n\nPlease login to view details and settle your account: ${loginUrl}`,
+      html,
+    });
+
+    res.status(200).json({ success: true, message: 'Reminder email sent successfully.' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }

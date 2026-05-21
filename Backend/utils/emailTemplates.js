@@ -329,3 +329,48 @@ export const passwordResetEmail = ({ resetUrl }) => {
 
   return html;
 };
+
+/**
+ * Email sent as a payment reminder from the owner
+ */
+export const paymentReminderEmail = ({ customerName, ownerName, payableAmount, loginUrl }) => {
+  const html = `
+  <div style="${baseStyles}">
+    <div style="${cardStyles}">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="font-size: 28px; margin: 0; color: #f8fafc;">
+          🔔 <span style="background: linear-gradient(135deg, #f59e0b, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Payment Reminder</span>
+        </h1>
+      </div>
+
+      <p style="color: #94a3b8; font-size: 16px; line-height: 1.6;">
+        Hello <strong style="color: #f8fafc;">${customerName}</strong>,
+      </p>
+      <p style="color: #94a3b8; font-size: 16px; line-height: 1.6;">
+        This is a friendly reminder from <strong style="color: #f8fafc;">${ownerName}</strong> regarding your outstanding balance.
+      </p>
+
+      <div style="${highlightBox('#ef4444')}">
+        <p style="margin: 0 0 4px 0; font-size: 14px; color: #94a3b8;">Amount Due</p>
+        <p style="margin: 0; font-size: 36px; font-weight: 800; color: #ef4444;">₹${Number(payableAmount).toLocaleString('en-IN')}</p>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="${loginUrl}" style="${buttonStyles}">
+          Login & Pay Now →
+        </a>
+      </div>
+
+      <p style="color: #64748b; font-size: 12px; margin-top: 24px; text-align: center;">
+        Please settle your dues at your earliest convenience. If you have already paid, please disregard this email.
+      </p>
+    </div>
+
+    <p style="text-align: center; color: #475569; font-size: 12px; padding: 16px;">
+      © 2026 Digital Udhaar Katha. All rights reserved.
+    </p>
+  </div>
+  `;
+
+  return html;
+};
