@@ -432,11 +432,16 @@ export const sendReminder = async (req, res, next) => {
       loginUrl
     });
 
-    await sendEmail({
+    // Send email asynchronously in the background so it doesn't block the API response
+    sendEmail({
       email: customer.email,
       subject: `🔔 Payment Reminder - ${req.user.name}`,
       message: `Hello ${customer.name},\n\nThis is a friendly reminder from ${req.user.name} regarding your pending balance of ₹${ledger.payableAmount}.\n\nPlease login to view details and settle your account: ${loginUrl}`,
       html,
+    }).then(() => {
+      console.log(`Reminder email sent asynchronously to ${customer.email}`);
+    }).catch((emailErr) => {
+      console.log('Reminder email could not be sent:', emailErr.message);
     });
 
     const freqLabel = frequency && frequency !== 'none' ? ` (recurring: ${frequency})` : '';
