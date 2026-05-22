@@ -13,6 +13,7 @@ import ownerRoutes from './routes/owner.js';
 import paymentRoutes from './routes/payment.js';
 import transactionRoutes from './routes/transaction.js';
 import { processScheduledReminders } from './controllers/owner.js';
+import sendEmail from './utils/sendEmail.js';
 
 const app = express();
 
@@ -33,6 +34,37 @@ app.use('/api/auth', authRoutes);
 app.use('/api/owner', ownerRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/transactions', transactionRoutes);
+
+// Test Email Route for Diagnostics
+app.get('/api/test-email', async (req, res) => {
+  try {
+    console.log('[Diagnostic] Running email test...');
+    const info = await sendEmail({
+      email: 'bruvgang321@gmail.com',
+      subject: '🏪 Digital Udhaar Katha - Diagnostic Test',
+      message: 'If you receive this, emails are working in this environment!',
+    });
+    res.status(200).json({
+      success: true,
+      message: 'Email sent successfully!',
+      info,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message || error,
+      code: error.code,
+      stack: error.stack,
+      env: {
+        SMTP_HOST: process.env.SMTP_HOST,
+        SMTP_PORT: process.env.SMTP_PORT,
+        SMTP_EMAIL: process.env.SMTP_EMAIL,
+        SMTP_PASSWORD_LENGTH: process.env.SMTP_PASSWORD ? process.env.SMTP_PASSWORD.length : 0,
+        FROM_EMAIL: process.env.FROM_EMAIL,
+      }
+    });
+  }
+});
 
 // Basic Route
 app.get('/', (req, res) => {
