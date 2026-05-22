@@ -96,7 +96,7 @@ export const createCustomer = async (req, res, next) => {
     }).then(() => {
       console.log(`Notification email sent asynchronously to ${customer.email}`);
     }).catch((err) => {
-      console.log('Email could not be sent:', err.message);
+      console.error('[Email Error] Email could not be sent:', err.message);
     });
 
     // Respond back in format expected by OwnerDashboard
@@ -221,10 +221,10 @@ export const updateDebt = async (req, res, next) => {
           message: `Congratulations ${customerName}! You have cleared all your outstanding dues of ₹${originalAmount} with ${ownerName}.`,
           html: customerHtml,
         }).catch((emailErr) => {
-          console.log('Could not send deletion email to customer:', emailErr.message);
+          console.error('[Email Error] Could not send deletion email to customer:', emailErr.message);
         });
       } catch (err) {
-        console.log('Error generating customer email:', err.message);
+        console.error('[Email Error] Error generating customer email:', err.message);
       }
 
       // Notify owner about the final clearance asynchronously in the background
@@ -241,10 +241,10 @@ export const updateDebt = async (req, res, next) => {
             message: `${customerName} has cleared their full outstanding balance of ₹${originalAmount}.`,
             html: ownerHtml,
           }).catch((emailErr) => {
-            console.log('Could not send notification email to owner:', emailErr.message);
+            console.error('[Email Error] Could not send notification email to owner:', emailErr.message);
           });
         } catch (err) {
-          console.log('Error generating owner email:', err.message);
+          console.error('[Email Error] Error generating owner email:', err.message);
         }
       }
 
@@ -282,7 +282,7 @@ export const updateDebt = async (req, res, next) => {
     }).then(() => {
       console.log(`Notification email sent asynchronously to ${customer.email}`);
     }).catch((err) => {
-      console.log('Notification email could not be sent:', err.message);
+      console.error('[Email Error] Notification email could not be sent:', err.message);
     });
 
     res.status(200).json({
@@ -369,7 +369,7 @@ export const deleteCustomer = async (req, res, next) => {
         subject: `🏪 Digital Udhaar Katha - Ledger record removed by ${req.user.name}`,
         message: `Hello ${customer.name},\n\nYour ledger record with ${req.user.name} has been removed. If your account was deleted, you will no longer be able to login unless a shop owner creates a new record for you.`,
       }).catch((emailErr) => {
-        console.log('Could not send removal email to customer:', emailErr.message);
+        console.error('[Email Error] Could not send removal email to customer:', emailErr.message);
       });
     }
 
@@ -441,7 +441,7 @@ export const sendReminder = async (req, res, next) => {
     }).then(() => {
       console.log(`Reminder email sent asynchronously to ${customer.email}`);
     }).catch((emailErr) => {
-      console.log('Reminder email could not be sent:', emailErr.message);
+      console.error('[Email Error] Reminder email could not be sent:', emailErr.message);
     });
 
     const freqLabel = frequency && frequency !== 'none' ? ` (recurring: ${frequency})` : '';
@@ -484,7 +484,7 @@ export const processScheduledReminders = async () => {
         });
         console.log(`Scheduled reminder sent to ${customer.email}`);
       } catch (emailErr) {
-        console.log(`Failed to send scheduled reminder to ${customer.email}:`, emailErr.message);
+        console.error('[Email Error] Failed to send scheduled reminder to ${customer.email}:', emailErr.message);
       }
 
       // Set next reminder date

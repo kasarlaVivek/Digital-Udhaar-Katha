@@ -34,12 +34,14 @@ const sendEmail = async (options) => {
   };
 
   try {
-    console.log(`Attempting to send email to: ${options.email}...`);
+    console.log(`[Email] Credentials check - User: ${process.env.SMTP_EMAIL ? '✓' : '✗'}, Host: ${process.env.SMTP_HOST || 'smtp.gmail.com'}`);
+    console.log(`[Email] Attempting to send to: ${options.email}...`);
     const info = await transporter.sendMail(message);
-    console.log('Message sent successfully: %s', info.messageId);
+    console.log('[Email] ✓ Message sent successfully:', info.messageId);
     return info;
   } catch (error) {
-    console.error('Nodemailer Error:', error.message);
+    console.error('[Email] ✗ Failed:', error.code || error.message);
+    console.error('[Email] Full error:', error);
     throw error;
   }
 };
