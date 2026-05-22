@@ -4,7 +4,7 @@ import { Plus, Search, Users, CreditCard, ArrowUpRight, ArrowDownLeft, DollarSig
 import API from '../api/axios';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const OwnerDashboard = () => {
   const [customers, setCustomers] = useState([]);
@@ -19,6 +19,10 @@ const OwnerDashboard = () => {
   const [selectedHistoryCustomer, setSelectedHistoryCustomer] = useState(null);
   const [customerTransactions, setCustomerTransactions] = useState([]);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [selectedReminderCustomer, setSelectedReminderCustomer] = useState(null);
+  const [reminderFrequency, setReminderFrequency] = useState('none');
+  const [sendingReminder, setSendingReminder] = useState(false);
 
   const [activeTab, setActiveTab] = useState('customers'); // 'customers' or 'transactions'
   const [allTransactions, setAllTransactions] = useState([]);
@@ -53,59 +57,77 @@ const OwnerDashboard = () => {
     }
   };
 
-  const handleSendReminder = async (customer) => {
+  const handleSendReminder = async (frequency = 'none') => {
+    if (!selectedReminderCustomer) return;
+    setSendingReminder(true);
     try {
-      await API.post(`/owner/customers/${customer._id}/remind`);
-      toast.success(`Reminder sent to ${customer.name}!`);
+      await API.post(`/owner/customers/${selectedReminderCustomer._id}/remind`, { frequency });
+      const freqLabel = frequency !== 'none' ? ` (recurring: ${frequency})` : '';
+      toast.success(`Reminder sent to ${selectedReminderCustomer.name}!${freqLabel}`);
+      setIsReminderModalOpen(false);
+      setReminderFrequency('none');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to send reminder');
+    } finally {
+      setSendingReminder(false);
     }
   };
 
+  const openReminderModal = (customer) => {
+    setSelectedReminderCustomer(customer);
+    setReminderFrequency('none');
+    setIsReminderModalOpen(true);
+  };
+
   const downloadPDF = (customer, transactions) => {
-    const doc = new jsPDF();
-    // Header
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(248, 250, 252);
-    doc.setFontSize(20);
-    doc.text('Digital Udhaar Katha', 14, 18);
-    doc.setFontSize(11);
-    doc.text(`Statement for: ${customer.name}`, 14, 28);
-    doc.text(`Email: ${customer.email}`, 14, 35);
-    doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 140, 28);
-    doc.text(`Balance: Rs.${(customer.payableAmount || 0).toLocaleString('en-IN')}`, 140, 35);
+    try {
+      const doc = new jsPDF();
+      // Header
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 210, 40, 'F');
+      doc.setTextColor(248, 250, 252);
+      doc.setFontSize(20);
+      doc.text('Digital Udhaar Katha', 14, 18);
+      doc.setFontSize(11);
+      doc.text(`Statement for: ${customer.name}`, 14, 28);
+      doc.text(`Email: ${customer.email}`, 14, 35);
+      doc.setFontSize(9);
+      doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 140, 28);
+      doc.text(`Balance: Rs.${(customer.payableAmount || 0).toLocaleString('en-IN')}`, 140, 35);
 
-    // Table
-    const tableData = transactions.map(t => ([
-      new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      t.description || (t.type === 'credit' ? 'Credit Added' : 'Repayment'),
-      t.type === 'credit' ? `+Rs.${t.amount.toLocaleString('en-IN')}` : '',
-      t.type === 'debit' ? `-Rs.${t.amount.toLocaleString('en-IN')}` : '',
-    ]));
+      // Table
+      const tableData = transactions.map(t => ([
+        new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        t.description || (t.type === 'credit' ? 'Credit Added' : 'Repayment'),
+        t.type === 'credit' ? `+Rs.${t.amount.toLocaleString('en-IN')}` : '',
+        t.type === 'debit' ? `-Rs.${t.amount.toLocaleString('en-IN')}` : '',
+      ]));
 
-    doc.autoTable({
-      startY: 48,
-      head: [['Date', 'Description', 'Credit', 'Debit']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [241, 245, 249] },
-      styles: { fontSize: 9, cellPadding: 4 },
-    });
+      autoTable(doc, {
+        startY: 48,
+        head: [['Date', 'Description', 'Credit', 'Debit']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [241, 245, 249] },
+        styles: { fontSize: 9, cellPadding: 4 },
+      });
 
-    // Footer
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(100);
-      doc.text(`Page ${i} of ${pageCount} | Digital Udhaar Katha`, 14, doc.internal.pageSize.height - 10);
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.text(`Page ${i} of ${pageCount} | Digital Udhaar Katha`, 14, doc.internal.pageSize.height - 10);
+      }
+
+      doc.save(`${customer.name.replace(/\s+/g, '_')}_statement.pdf`);
+      toast.success('PDF downloaded!');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF. Please try again.');
     }
-
-    doc.save(`${customer.name.replace(/\s+/g, '_')}_statement.pdf`);
-    toast.success('PDF downloaded!');
   };
 
   const handleDownloadPDF = async (customer) => {
@@ -132,37 +154,42 @@ const OwnerDashboard = () => {
   };
 
   const handleDownloadAllPDF = () => {
-    const doc = new jsPDF();
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 210, 35, 'F');
-    doc.setTextColor(248, 250, 252);
-    doc.setFontSize(20);
-    doc.text('Digital Udhaar Katha - Global Activity Log', 14, 18);
-    doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 14, 28);
+    try {
+      const doc = new jsPDF();
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 210, 35, 'F');
+      doc.setTextColor(248, 250, 252);
+      doc.setFontSize(20);
+      doc.text('Digital Udhaar Katha - Global Activity Log', 14, 18);
+      doc.setFontSize(9);
+      doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 14, 28);
 
-    const tableData = allTransactions.map(t => {
-      const custName = t.customerName || (t.customerId ? t.customerId.name : 'Deleted');
-      return [
-        new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-        custName,
-        t.description || (t.type === 'credit' ? 'Credit Added' : 'Repayment'),
-        t.type === 'credit' ? `+Rs.${t.amount.toLocaleString('en-IN')}` : `-Rs.${t.amount.toLocaleString('en-IN')}`,
-      ];
-    });
+      const tableData = allTransactions.map(t => {
+        const custName = t.customerName || (t.customerId ? t.customerId.name : 'Deleted');
+        return [
+          new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          custName,
+          t.description || (t.type === 'credit' ? 'Credit Added' : 'Repayment'),
+          t.type === 'credit' ? `+Rs.${t.amount.toLocaleString('en-IN')}` : `-Rs.${t.amount.toLocaleString('en-IN')}`,
+        ];
+      });
 
-    doc.autoTable({
-      startY: 42,
-      head: [['Date', 'Customer', 'Description', 'Amount']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [241, 245, 249] },
-      styles: { fontSize: 9, cellPadding: 4 },
-    });
+      autoTable(doc, {
+        startY: 42,
+        head: [['Date', 'Customer', 'Description', 'Amount']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [241, 245, 249] },
+        styles: { fontSize: 9, cellPadding: 4 },
+      });
 
-    doc.save('Global_Activity_Log.pdf');
-    toast.success('PDF downloaded!');
+      doc.save('Global_Activity_Log.pdf');
+      toast.success('PDF downloaded!');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF. Please try again.');
+    }
   };
 
   useEffect(() => {
@@ -482,7 +509,7 @@ const OwnerDashboard = () => {
                             <button
                               className="btn btn-outline"
                               style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#f59e0b' }}
-                              onClick={(e) => { e.stopPropagation(); handleSendReminder(customer); }}
+                              onClick={(e) => { e.stopPropagation(); openReminderModal(customer); }}
                               title="Send payment reminder email"
                             >
                               <Bell size={14} />
@@ -978,6 +1005,130 @@ const OwnerDashboard = () => {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Reminder Frequency Modal */}
+        {isReminderModalOpen && selectedReminderCustomer && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setIsReminderModalOpen(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="glass-card"
+              style={{ width: '100%', maxWidth: '440px', padding: '2.5rem' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.5rem' }}>
+                <div style={{
+                  width: '48px', height: '48px', borderRadius: '14px',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#f59e0b',
+                }}>
+                  <Bell size={24} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.3rem', margin: 0 }}>Payment Reminder</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+                    for <strong>{selectedReminderCustomer.name}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div style={{
+                padding: '1rem',
+                background: 'var(--surface)',
+                borderRadius: '12px',
+                border: '1px solid var(--glass-border)',
+                margin: '1.5rem 0',
+                textAlign: 'center',
+              }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Outstanding Balance</span>
+                <p style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--error)', margin: '4px 0 0 0' }}>
+                  ₹{(selectedReminderCustomer.payableAmount || 0).toLocaleString('en-IN')}
+                </p>
+              </div>
+
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                Choose how often to remind this customer:
+              </p>
+
+              <div style={{ display: 'grid', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                {[
+                  { value: 'none', label: '🔔 Send Now Only', desc: 'One-time reminder, no recurring' },
+                  { value: 'daily', label: '📅 Daily', desc: 'Remind every day' },
+                  { value: 'every3days', label: '📆 Every 3 Days', desc: 'Remind every 3 days' },
+                  { value: 'weekly', label: '🗓️ Weekly', desc: 'Remind once a week' },
+                  { value: 'biweekly', label: '📋 Bi-Weekly', desc: 'Remind every 2 weeks' },
+                  { value: 'monthly', label: '📅 Monthly', desc: 'Remind once a month' },
+                ].map((opt) => (
+                  <div
+                    key={opt.value}
+                    onClick={() => setReminderFrequency(opt.value)}
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: '10px',
+                      border: reminderFrequency === opt.value
+                        ? '2px solid #f59e0b'
+                        : '1px solid var(--glass-border)',
+                      background: reminderFrequency === opt.value
+                        ? 'rgba(245, 158, 11, 0.08)'
+                        : 'transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <div>
+                      <p style={{ fontWeight: '600', fontSize: '0.9rem', margin: 0 }}>{opt.label}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{opt.desc}</p>
+                    </div>
+                    <div style={{
+                      width: '20px', height: '20px', borderRadius: '50%',
+                      border: reminderFrequency === opt.value ? '2px solid #f59e0b' : '2px solid var(--glass-border)',
+                      background: reminderFrequency === opt.value ? '#f59e0b' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.2s ease',
+                    }}>
+                      {reminderFrequency === opt.value && (
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white' }} />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  style={{ flex: 1 }}
+                  onClick={() => setIsReminderModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ flex: 1, background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}
+                  onClick={() => handleSendReminder(reminderFrequency)}
+                  disabled={sendingReminder}
+                >
+                  {sendingReminder ? (
+                    <span>Sending...</span>
+                  ) : (
+                    <>
+                      <Bell size={16} />
+                      <span>Send Reminder</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

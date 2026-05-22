@@ -7,7 +7,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 // Confetti particle component
 const ConfettiParticle = ({ delay, color }) => {
@@ -202,45 +202,50 @@ const CustomerDashboard = () => {
   };
 
   const handleDownloadMyPDF = () => {
-    const doc = new jsPDF();
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(248, 250, 252);
-    doc.setFontSize(20);
-    doc.text('Digital Udhaar Katha', 14, 18);
-    doc.setFontSize(11);
-    doc.text(`Statement for: ${user?.name || 'Customer'}`, 14, 28);
-    doc.text(`Email: ${user?.email || ''}`, 14, 35);
-    doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 140, 28);
+    try {
+      const doc = new jsPDF();
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 210, 40, 'F');
+      doc.setTextColor(248, 250, 252);
+      doc.setFontSize(20);
+      doc.text('Digital Udhaar Katha', 14, 18);
+      doc.setFontSize(11);
+      doc.text(`Statement for: ${user?.name || 'Customer'}`, 14, 28);
+      doc.text(`Email: ${user?.email || ''}`, 14, 35);
+      doc.setFontSize(9);
+      doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 140, 28);
 
-    const tableData = transactions.map(t => ([
-      new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      t.ownerName || 'Shop',
-      t.description || (t.type === 'credit' ? 'Credit Added' : 'Repayment'),
-      t.type === 'credit' ? `+Rs.${t.amount.toLocaleString('en-IN')}` : `-Rs.${t.amount.toLocaleString('en-IN')}`,
-    ]));
+      const tableData = transactions.map(t => ([
+        new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        t.ownerName || 'Shop',
+        t.description || (t.type === 'credit' ? 'Credit Added' : 'Repayment'),
+        t.type === 'credit' ? `+Rs.${t.amount.toLocaleString('en-IN')}` : `-Rs.${t.amount.toLocaleString('en-IN')}`,
+      ]));
 
-    doc.autoTable({
-      startY: 48,
-      head: [['Date', 'Shop', 'Description', 'Amount']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [241, 245, 249] },
-      styles: { fontSize: 9, cellPadding: 4 },
-    });
+      autoTable(doc, {
+        startY: 48,
+        head: [['Date', 'Shop', 'Description', 'Amount']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [241, 245, 249] },
+        styles: { fontSize: 9, cellPadding: 4 },
+      });
 
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(100);
-      doc.text(`Page ${i} of ${pageCount} | Digital Udhaar Katha`, 14, doc.internal.pageSize.height - 10);
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.text(`Page ${i} of ${pageCount} | Digital Udhaar Katha`, 14, doc.internal.pageSize.height - 10);
+      }
+
+      doc.save(`${(user?.name || 'Customer').replace(/\s+/g, '_')}_statement.pdf`);
+      toast.success('PDF downloaded!');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF. Please try again.');
     }
-
-    doc.save(`${(user?.name || 'Customer').replace(/\s+/g, '_')}_statement.pdf`);
-    toast.success('PDF downloaded!');
   };
 
   // Initialize with customer's active ledgers

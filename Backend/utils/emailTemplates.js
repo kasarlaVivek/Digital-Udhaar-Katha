@@ -374,3 +374,55 @@ export const paymentReminderEmail = ({ customerName, ownerName, payableAmount, l
 
   return html;
 };
+
+/**
+ * Email sent when an EXISTING customer is linked to a new owner's ledger.
+ * Does NOT include credentials — only notifies about being added by a new shop.
+ */
+export const customerLinkedEmail = ({ customerName, ownerName, payableAmount, loginUrl }) => {
+  const html = `
+  <div style="${baseStyles}">
+    <div style="${cardStyles}">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="font-size: 28px; margin: 0; color: #f8fafc;">
+          🏪 <span style="background: linear-gradient(135deg, #6366f1, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">New Shop Added</span>
+        </h1>
+      </div>
+
+      <p style="color: #94a3b8; font-size: 16px; line-height: 1.6;">
+        Hello <strong style="color: #f8fafc;">${customerName}</strong>,
+      </p>
+      <p style="color: #94a3b8; font-size: 16px; line-height: 1.6;">
+        <strong style="color: #f8fafc;">${ownerName}</strong> has added you to their ledger on Digital Udhaar Katha.
+      </p>
+
+      <div style="${highlightBox('#ef4444')}">
+        <p style="margin: 0 0 4px 0; font-size: 14px; color: #94a3b8;">Outstanding Balance with ${ownerName}</p>
+        <p style="margin: 0; font-size: 32px; font-weight: 800; color: #ef4444;">₹${Number(payableAmount).toLocaleString('en-IN')}</p>
+      </div>
+
+      <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 16px; margin-top: 16px;">
+        <p style="margin: 0; color: #94a3b8; font-size: 14px;">
+          You can use your existing login credentials to view and manage this new account.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="${loginUrl}" style="${buttonStyles}">
+          View Details & Pay →
+        </a>
+      </div>
+
+      <p style="color: #64748b; font-size: 12px; margin-top: 24px; text-align: center;">
+        If you did not expect this, please contact ${ownerName} directly.
+      </p>
+    </div>
+
+    <p style="text-align: center; color: #475569; font-size: 12px; padding: 16px;">
+      © 2026 Digital Udhaar Katha. All rights reserved.
+    </p>
+  </div>
+  `;
+
+  return html;
+};

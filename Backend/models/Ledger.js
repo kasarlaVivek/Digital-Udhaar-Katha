@@ -15,6 +15,15 @@ const ledgerSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  reminderFrequency: {
+    type: String,
+    enum: ['none', 'daily', 'every3days', 'weekly', 'biweekly', 'monthly'],
+    default: 'none',
+  },
+  nextReminderAt: {
+    type: Date,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

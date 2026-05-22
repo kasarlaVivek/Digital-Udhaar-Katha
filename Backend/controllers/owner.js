@@ -2,7 +2,7 @@ import User from '../models/User.js';
 import Ledger from '../models/Ledger.js';
 import Transaction from '../models/Transaction.js';
 import sendEmail from '../utils/sendEmail.js';
-import { customerCreatedEmail, debtUpdatedEmail, accountDeletedEmail, ownerNotifyDeletionEmail, paymentReminderEmail } from '../utils/emailTemplates.js';
+import { customerCreatedEmail, customerLinkedEmail, debtUpdatedEmail, accountDeletedEmail, ownerNotifyDeletionEmail, paymentReminderEmail } from '../utils/emailTemplates.js';
 
 // @desc    Create a new customer or link existing customer to owner's ledger
 // @route   POST /api/owner/customers
@@ -58,23 +58,39 @@ export const createCustomer = async (req, res, next) => {
       description: description || (Number(payableAmount) > 0 ? 'Customer created with initial debt' : 'Customer created (Zero balance)')
     });
 
-    // 4. Send email to customer
+    // 4. Send email to customer — different emails for new vs existing customers
     const loginUrl = `${process.env.FRONTEND_URL}/login`;
-    const html = customerCreatedEmail({
-      customerName: customer.name,
-      ownerName: req.user.name,
-      email,
-      password: isNewCustomer ? password : '[Use your existing password]',
-      payableAmount: payableAmount || 0,
-      loginUrl
-    });
 
-    const plainText = `Hello ${customer.name},\n\nYour account has been added to the ledger of ${req.user.name}.\n\nYour login details:\nEmail: ${email}\n\nYour outstanding balance with this shop is: ₹${payableAmount || 0}\n\nPlease login to pay: ${loginUrl}`;
+    let html, plainText, subject;
+
+    if (isNewCustomer) {
+      // New customer: send full credentials
+      html = customerCreatedEmail({
+        customerName: customer.name,
+        ownerName: req.user.name,
+        email,
+        password,
+        payableAmount: payableAmount || 0,
+        loginUrl
+      });
+      plainText = `Hello ${customer.name},\n\nYour account has been created on Digital Udhaar Katha by ${req.user.name}.\n\nYour login details:\nEmail: ${email}\nPassword: ${password}\n\nYour outstanding balance with this shop is: ₹${payableAmount || 0}\n\nPlease login to pay: ${loginUrl}`;
+      subject = `🏪 Digital Udhaar Katha - Account created by ${req.user.name}`;
+    } else {
+      // Existing customer: only notify about being added by a new owner (no credentials)
+      html = customerLinkedEmail({
+        customerName: customer.name,
+        ownerName: req.user.name,
+        payableAmount: payableAmount || 0,
+        loginUrl
+      });
+      plainText = `Hello ${customer.name},\n\n${req.user.name} has added you to their ledger on Digital Udhaar Katha.\n\nYour outstanding balance with this shop is: ₹${payableAmount || 0}\n\nUse your existing credentials to login: ${loginUrl}`;
+      subject = `🏪 Digital Udhaar Katha - Added to ${req.user.name}'s ledger`;
+    }
 
     // Send email asynchronously in the background so it doesn't block the API response
     sendEmail({
       email: customer.email,
-      subject: `🏪 Digital Udhaar Katha - Account linked by ${req.user.name}`,
+      subject,
       message: plainText,
       html,
     }).then(() => {
@@ -366,11 +382,25 @@ export const deleteCustomer = async (req, res, next) => {
   }
 };
 
-// @desc    Send payment reminder email
+// Helper: Calculate the next reminder date based on frequency
+const getNextReminderDate = (frequency) => {
+  const now = new Date();
+  switch (frequency) {
+    case 'daily': return new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+    case 'every3days': return new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    case 'weekly': return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    case 'biweekly': return new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    case 'monthly': return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    default: return null;
+  }
+};
+
+// @desc    Send payment reminder email (with optional recurring frequency)
 // @route   POST /api/owner/customers/:id/remind
 // @access  Private/Owner
 export const sendReminder = async (req, res, next) => {
   const customerId = req.params.id;
+  const { frequency } = req.body; // 'none' | 'daily' | 'every3days' | 'weekly' | 'biweekly' | 'monthly'
 
   try {
     const ledger = await Ledger.findOne({ ownerId: req.user.id, customerId });
@@ -381,6 +411,17 @@ export const sendReminder = async (req, res, next) => {
     const customer = await User.findById(customerId);
     if (!customer) {
       return res.status(404).json({ success: false, message: 'Customer not found.' });
+    }
+
+    // Update reminder frequency on ledger
+    if (frequency && frequency !== 'none') {
+      ledger.reminderFrequency = frequency;
+      ledger.nextReminderAt = getNextReminderDate(frequency);
+      await ledger.save();
+    } else if (frequency === 'none') {
+      ledger.reminderFrequency = 'none';
+      ledger.nextReminderAt = null;
+      await ledger.save();
     }
 
     const loginUrl = `${process.env.FRONTEND_URL}/login`;
@@ -398,15 +439,54 @@ export const sendReminder = async (req, res, next) => {
       html,
     });
 
-    res.status(200).json({ success: true, message: 'Reminder email sent successfully.' });
+    const freqLabel = frequency && frequency !== 'none' ? ` (recurring: ${frequency})` : '';
+    res.status(200).json({ success: true, message: `Reminder email sent successfully!${freqLabel}` });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
 };
 
+// @desc    Process scheduled reminders (called by cron or setInterval)
+export const processScheduledReminders = async () => {
+  try {
+    const now = new Date();
+    const dueLedgers = await Ledger.find({
+      reminderFrequency: { $ne: 'none' },
+      nextReminderAt: { $lte: now },
+      payableAmount: { $gt: 0 }
+    }).populate('ownerId customerId');
 
+    for (const ledger of dueLedgers) {
+      const customer = ledger.customerId;
+      const owner = ledger.ownerId;
 
+      if (!customer || !owner) continue;
 
+      const loginUrl = `${process.env.FRONTEND_URL}/login`;
+      const html = paymentReminderEmail({
+        customerName: customer.name,
+        ownerName: owner.name,
+        payableAmount: ledger.payableAmount,
+        loginUrl
+      });
 
+      try {
+        await sendEmail({
+          email: customer.email,
+          subject: `🔔 Payment Reminder - ${owner.name}`,
+          message: `Hello ${customer.name}, this is a scheduled reminder from ${owner.name} for your pending balance of ₹${ledger.payableAmount}.`,
+          html,
+        });
+        console.log(`Scheduled reminder sent to ${customer.email}`);
+      } catch (emailErr) {
+        console.log(`Failed to send scheduled reminder to ${customer.email}:`, emailErr.message);
+      }
 
-
+      // Set next reminder date
+      ledger.nextReminderAt = getNextReminderDate(ledger.reminderFrequency);
+      await ledger.save();
+    }
+  } catch (err) {
+    console.error('Error processing scheduled reminders:', err.message);
+  }
+};

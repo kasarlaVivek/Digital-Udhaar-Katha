@@ -12,6 +12,7 @@ import authRoutes from './routes/auth.js';
 import ownerRoutes from './routes/owner.js';
 import paymentRoutes from './routes/payment.js';
 import transactionRoutes from './routes/transaction.js';
+import { processScheduledReminders } from './controllers/owner.js';
 
 const app = express();
 
@@ -42,4 +43,10 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+
+  // Process scheduled reminders every hour (3600000 ms)
+  setInterval(() => {
+    processScheduledReminders();
+  }, 60 * 60 * 1000);
+  console.log('Scheduled reminder cron initialized (runs every hour).');
 });
