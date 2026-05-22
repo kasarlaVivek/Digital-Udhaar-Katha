@@ -12,8 +12,9 @@ import authRoutes from './routes/auth.js';
 import ownerRoutes from './routes/owner.js';
 import paymentRoutes from './routes/payment.js';
 import transactionRoutes from './routes/transaction.js';
-import { processScheduledReminders } from './controllers/owner.js';
 import sendEmail from './utils/sendEmail.js';
+import { runPortDiagnostics } from './scratch_port_test.js';
+import { processScheduledReminders } from './controllers/owner.js';
 
 const app = express();
 
@@ -62,6 +63,23 @@ app.get('/api/test-email', async (req, res) => {
         SMTP_PASSWORD_LENGTH: process.env.SMTP_PASSWORD ? process.env.SMTP_PASSWORD.length : 0,
         FROM_EMAIL: process.env.FROM_EMAIL,
       }
+    });
+  }
+});
+
+// Test Outgoing Ports Route for Diagnostics
+app.get('/api/test-ports', async (req, res) => {
+  try {
+    console.log('[Diagnostic] Running port diagnostics...');
+    const results = await runPortDiagnostics();
+    res.status(200).json({
+      success: true,
+      results,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message || error,
     });
   }
 });
