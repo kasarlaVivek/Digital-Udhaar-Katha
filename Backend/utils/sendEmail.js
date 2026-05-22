@@ -1,4 +1,8 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+
+// Force IPv4 DNS resolution globally
+dns.setDefaultResultOrder('ipv4first');
 
 const sendEmail = async (options) => {
   const smtpPort = parseInt(process.env.SMTP_PORT, 10) || 587;
@@ -10,10 +14,14 @@ const sendEmail = async (options) => {
       user: process.env.SMTP_EMAIL,
       pass: process.env.SMTP_PASSWORD,
     },
+    connectionUrl: undefined,
     tls: {
-      rejectUnauthorized: false
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
     },
-    // Force IPv4 to prevent ENETUNREACH on cloud environments that lack IPv6
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    connectionTimeout: 10000,
     family: 4
   });
 
