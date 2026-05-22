@@ -110,7 +110,13 @@ const OwnerDashboard = () => {
         theme: 'grid',
         headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [241, 245, 249] },
-        styles: { fontSize: 9, cellPadding: 4 },
+        styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak' },
+        columnStyles: {
+          0: { cellWidth: 35 }, // Date
+          1: { cellWidth: 'auto' }, // Description (takes remaining space and wraps)
+          2: { cellWidth: 30 }, // Credit
+          3: { cellWidth: 30 }, // Debit
+        }
       });
 
       // Footer
@@ -181,7 +187,13 @@ const OwnerDashboard = () => {
         theme: 'grid',
         headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [241, 245, 249] },
-        styles: { fontSize: 9, cellPadding: 4 },
+        styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak' },
+        columnStyles: {
+          0: { cellWidth: 35 }, // Date
+          1: { cellWidth: 40 }, // Customer
+          2: { cellWidth: 'auto' }, // Description (takes remaining space and wraps)
+          3: { cellWidth: 30 }, // Amount
+        }
       });
 
       doc.save('Global_Activity_Log.pdf');

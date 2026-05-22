@@ -229,7 +229,13 @@ const CustomerDashboard = () => {
         theme: 'grid',
         headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [241, 245, 249] },
-        styles: { fontSize: 9, cellPadding: 4 },
+        styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak' },
+        columnStyles: {
+          0: { cellWidth: 35 }, // Date
+          1: { cellWidth: 35 }, // Shop
+          2: { cellWidth: 'auto' }, // Description (takes remaining space and wraps)
+          3: { cellWidth: 30 }, // Amount
+        }
       });
 
       const pageCount = doc.internal.getNumberOfPages();
