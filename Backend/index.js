@@ -40,6 +40,71 @@ app.get('/', (req, res) => {
   res.send('Digital Udhaar Katha API is running...');
 });
 
+// Diagnostic: Check which email providers are configured
+app.get('/api/email-config', (req, res) => {
+  res.json({
+    resend: {
+      configured: !!process.env.RESEND_API_KEY,
+      keyPreview: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 12) + '...' : null
+    },
+    brevo: {
+      configured: !!process.env.BREVO_API_KEY,
+      keyPreview: process.env.BREVO_API_KEY ? process.env.BREVO_API_KEY.substring(0, 12) + '...' : null
+    },
+    smtp: {
+      host: process.env.SMTP_HOST || 'not set',
+      port: process.env.SMTP_PORT || 'not set',
+      user: process.env.SMTP_EMAIL || 'not set',
+      passConfigured: !!process.env.SMTP_PASSWORD
+    },
+    from: {
+      name: process.env.FROM_NAME || 'not set',
+      email: process.env.FROM_EMAIL || 'not set'
+    },
+    frontendUrl: process.env.FRONTEND_URL || 'not set'
+  });
+});
+
+// Diagnostic: Send a real test email and return the exact result or error
+app.post('/api/test-email', async (req, res) => {
+  const { to } = req.body;
+  const testTo = to || process.env.FROM_EMAIL || 'test@mailinator.com';
+
+  try {
+    const result = await sendEmail({
+      email: testTo,
+      subject: '🧪 Digital Udhaar Katha — Email Test',
+      message: `This is a test email sent at ${new Date().toISOString()}. If you received this, your email configuration is working!`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;padding:30px;background:#0f172a;color:#f8fafc;border-radius:16px;">
+        <h2 style="color:#6366f1;">✅ Email Test Successful!</h2>
+        <p>Your Digital Udhaar Katha email system is working correctly.</p>
+        <p style="color:#94a3b8;font-size:13px;">Sent at: ${new Date().toISOString()}</p>
+      </div>`
+    });
+
+    res.json({
+      success: true,
+      message: `Test email sent successfully to ${testTo}!`,
+      provider: process.env.RESEND_API_KEY ? 'Resend HTTP API' : process.env.BREVO_API_KEY ? 'Brevo HTTP API' : `SMTP (${process.env.SMTP_HOST}:${process.env.SMTP_PORT})`,
+      result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Email sending failed',
+      error: error.message,
+      code: error.code || null,
+      provider: process.env.RESEND_API_KEY ? 'Resend HTTP API' : process.env.BREVO_API_KEY ? 'Brevo HTTP API' : `SMTP (${process.env.SMTP_HOST}:${process.env.SMTP_PORT})`,
+      diagnosticTips: [
+        process.env.BREVO_API_KEY ? 'Brevo API key IS set — check if FROM_EMAIL matches a verified sender in Brevo dashboard' : 'BREVO_API_KEY is NOT set — consider adding it',
+        process.env.RESEND_API_KEY ? 'Resend API key IS set — check if FROM_EMAIL domain is verified' : 'RESEND_API_KEY is NOT set',
+        `FROM_EMAIL is: ${process.env.FROM_EMAIL || 'NOT SET (will default to bruvgang321@gmail.com)'}`,
+        `SMTP fallback would use: ${process.env.SMTP_HOST || 'smtp.gmail.com'}:${process.env.SMTP_PORT || '587'} — ports 25/465/587 are BLOCKED on Render free tier`
+      ]
+    });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

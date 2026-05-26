@@ -29,6 +29,14 @@ const sendEmail = async (options) => {
 
       const data = await response.json();
       if (!response.ok) {
+        console.error('[Email Diagnostic] Resend HTTP API returned error:', JSON.stringify(data, null, 2));
+        if (data.message && data.message.toLowerCase().includes('sender')) {
+          console.error(
+            `[Email Diagnostic Help] SENDER NOT VERIFIED: The sender address "${fromEmail}" is not verified in your Resend account. ` +
+            `By default, Resend only allows sending from onboarding@resend.dev unless you verify your custom domain. ` +
+            `Please update FROM_EMAIL in your Render dashboard environment variables to a verified email or domain, or use onboarding@resend.dev.`
+          );
+        }
         throw new Error(data.message || `Resend API returned status ${response.status}`);
       }
 
@@ -61,6 +69,14 @@ const sendEmail = async (options) => {
 
       const data = await response.json();
       if (!response.ok) {
+        console.error('[Email Diagnostic] Brevo HTTP API returned error:', JSON.stringify(data, null, 2));
+        if (data.message && (data.message.toLowerCase().includes('sender') || data.message.toLowerCase().includes('unauthorized') || data.message.toLowerCase().includes('permission'))) {
+          console.error(
+            `[Email Diagnostic Help] SENDER NOT VERIFIED: The sender address "${fromEmail}" is likely not verified in your Brevo account. ` +
+            `Brevo strictly requires that the sender email address matches a verified sender in your Brevo Dashboard (Senders & Domains). ` +
+            `Please check your Brevo dashboard under 'Senders & Domains', verify "${fromEmail}", or set FROM_EMAIL in your Render environment variables to your verified Brevo email.`
+          );
+        }
         throw new Error(data.message || `Brevo API returned status ${response.status}`);
       }
 
@@ -115,12 +131,21 @@ const sendEmail = async (options) => {
     console.error('[Email] ✗ SMTP Transport Failed:', error.code || error.message);
     console.error('[Email] Full SMTP error details:', error);
     
-    // Provide a highly helpful diagnostic tip in the logs if it timed out on Render
-    if (error.code === 'ETIMEDOUT' && smtpHost.includes('gmail.com')) {
+    // Provide an extremely helpful diagnostic tip in the logs if it timed out or refused connection on Render
+    if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED' || error.message.toLowerCase().includes('timeout')) {
       console.error(
-        '[Email Help] DIAGNOSTIC TIP: Standard SMTP port 587/465 is blocked by Render\'s free tier firewall. ' +
-        'To fix this, please register a free account on Brevo or SendGrid, set SMTP_PORT=2525, SMTP_HOST=smtp-relay.brevo.com (or smtp.sendgrid.net), ' +
-        'and set your Brevo/SendGrid credentials. Alternatively, set RESEND_API_KEY or BREVO_API_KEY to use HTTP API sending on port 443!'
+        `[Email Help] DIAGNOSTIC TIP: Standard SMTP port ${smtpPort} connection to ${smtpHost} failed. ` +
+        `Render's free tier firewall blocks outbound SMTP connections on ports 25, 465, and 587 by default. ` +
+        `To resolve this email issue, please do ONE of the following in your Render Dashboard Environment Variables:\n\n` +
+        `👉 OPTION A (Recommended - HTTP API):\n` +
+        `   1. Set BREVO_API_KEY = your active Brevo API key (starts with 'xkeysib-...').\n` +
+        `   2. Set FROM_EMAIL = the exact email address you verified as a sender in Brevo.\n\n` +
+        `👉 OPTION B (SMTP on port 2525):\n` +
+        `   1. Set SMTP_HOST = smtp-relay.brevo.com\n` +
+        `   2. Set SMTP_PORT = 2525 (this port is NOT blocked by Render!)\n` +
+        `   3. Set SMTP_EMAIL = your Brevo login email.\n` +
+        `   4. Set SMTP_PASSWORD = your Brevo SMTP key.\n` +
+        `   5. Set FROM_EMAIL = your verified Brevo sender email.`
       );
     }
     throw error;
