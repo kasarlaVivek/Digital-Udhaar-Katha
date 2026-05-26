@@ -84,7 +84,9 @@ const sendEmail = async (options) => {
       return data;
     } catch (error) {
       console.error('[Email] ✗ Brevo HTTP API failed:', error.message);
-      console.log('[Email] Falling back to SMTP transport...');
+      // Do NOT fall through to SMTP — Brevo is the primary provider when configured.
+      // SMTP on Render will always fail (ports blocked), so throw the real Brevo error.
+      throw error;
     }
   }
 
